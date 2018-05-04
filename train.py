@@ -34,6 +34,8 @@ def parse_flags():
     a.add_argument('--dim', type=int, default=8)
 
     # Training.
+    a.add_argument('--lr', type=float, default=0.001)
+    a.add_argument('--momentum', type=float, default=0.9)
     a.add_argument('--end_epoch', type=int, default=1000)
     a.add_argument('--batch_size', type=int, default=32)
     a.add_argument('--batches_per_log', type=int, default=4)
@@ -61,11 +63,11 @@ def run(flags):
                      speeds, speed_frame_offset)
     dataset = Dataset(train, val)
     model = Model(flags.dim)
-    optimizer = SGD(model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = SGD(model.parameters(), lr=flags.lr, momentum=flags.momentum)
     model.seq.convert()
     begin_epoch = model.maybe_load_last_epoch(flags.out_model)
-    model.fit(dataset, optimizer, begin_epoch=begin_epoch, end_epoch=flags.end_epoch,
-              batch_size=flags.batch_size,
+    model.fit(dataset, optimizer, begin_epoch=begin_epoch,
+              end_epoch=flags.end_epoch, batch_size=flags.batch_size,
               batches_per_log=flags.batches_per_log, chk_dir=flags.out_model)
 
 
