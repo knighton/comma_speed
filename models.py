@@ -38,13 +38,13 @@ class SpeedPredictor(ptnn.Module):
         loss = F.mse_loss(pred_speeds, true_speeds)
         return np.asscalar(loss.detach().cpu().numpy())
 
-    def fit_on_epoch(self, dataset, optimizer, batch_size):
+    def fit_on_epoch(self, dataset, optimizer, batch_size, batches_per_log=-1):
         each_batch = dataset.each_batch(batch_size)
         #total = dataset.batches_per_epoch(batch_size)
         #each_batch = tqdm(each_batch, total=total)
         train_losses = []
         val_losses = []
-        for is_training, xx, yy in each_batch:
+        for batch_index, (is_training, xx, yy) in enumerate(each_batch):
             clips, = xx
             clips = self.transform_clips(clips)
             speeds, = yy
@@ -53,14 +53,16 @@ class SpeedPredictor(ptnn.Module):
                 self.train()
                 loss = self.train_on_batch(optimizer, clips, speeds)
                 train_losses.append(loss)
-                sys.stdout.write('T %.4f\n' % loss)
-                sys.stdout.flush()
+                if batches_per_log != -1 and not batch_index % batches_per_log:
+                    sys.stdout.write('T %.4f\n' % loss)
+                    sys.stdout.flush()
             else:
                 self.eval()
                 loss = self.val_on_batch(clips, speeds)
                 val_losses.append(loss)
-                sys.stdout.write('%sV %.4f\n' % (' ' * 20, loss))
-                sys.stdout.flush()
+                if batches_per_log != -1 and not batch_index % batches_per_log:
+                    sys.stdout.write('%sV %.4f\n' % (' ' * 20, loss))
+                    sys.stdout.flush()
         train_loss = np.mean(train_losses)
         val_loss = np.mean(val_losses)
         return train_loss, val_loss
@@ -77,10 +79,11 @@ class SpeedPredictor(ptnn.Module):
         d = torch.load(filename)
         self.load_state_dict(d)
 
-    def fit(self, dataset, optimizer, num_epochs, batch_size, chk_dir):
+    def fit(self, dataset, optimizer, num_epochs=10, batch_size=32,
+            batches_per_log=-1, chk_dir=None):
         for epoch in range(num_epochs):
             train_loss, val_loss = self.fit_on_epoch(
-                dataset, optimizer, batch_size)
+                dataset, optimizer, batch_size, batches_per_log)
             if chk_dir:
                 self.save(chk_dir, epoch, train_loss, val_loss)
             print('epoch %d: %.4f %.4f' % (epoch, train_loss, val_loss))
