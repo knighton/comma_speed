@@ -64,7 +64,6 @@ def run(flags):
     dataset = Dataset(train, val)
     model = Model(flags.dim)
     optimizer = SGD(model.parameters(), lr=flags.lr, momentum=flags.momentum)
-    model.seq.convert()
     begin_epoch = model.maybe_load_last_epoch(flags.out_model)
     model.fit(dataset, optimizer, begin_epoch=begin_epoch,
               end_epoch=flags.end_epoch, batch_size=flags.batch_size,

@@ -76,27 +76,36 @@ class SpeedPredictor(ptnn.Module):
             os.makedirs(chk_dir)
         torch.save(self.state_dict(), out)
 
+    def convert(self):
+        # Call convert() on any 'torchplus' models.  Is hack.
+        pass
+
     def load(self, filename):
         print('Loading model checkpoint: %s' % filename)
+        self.convert()
         self.load_state_dict(torch.load(filename))
 
     def maybe_load_last_epoch(self, chk_dir):
         print('Loading model checkpoints dir: %s' % chk_dir)
         pat = '[0-9]+_[0-9]+_[0-9]+.bin'
+        if not os.path.isdir(chk_dir):
+            print('Checkpoint dir does not exist')
+            return 0
         ff = os.listdir(chk_dir)
         ff = filter(lambda f: re.match(pat, f), ff)
         ff = list(map(lambda f: os.path.join(chk_dir, f), ff))
         if not ff:
-            print('No checkpoints found.')
-            return None
+            print('No checkpoints found')
+            return 0
         ff.sort()
         f = ff[-1]
         self.load(f)
         x = f.rindex(os.path.sep)
         f = f[x + 1:]
         x = f.index('_')
-        epoch = int(f[:x])
-        return epoch
+        last_epoch = int(f[:x])
+        print('Loaded epoch %d' % last_epoch)
+        return last_epoch + 1
 
     def fit(self, dataset, optimizer, begin_epoch=0, end_epoch=10,
             batch_size=32, batches_per_log=-1, chk_dir=None):
@@ -137,6 +146,9 @@ class Model(SpeedPredictor):
         d2 = nn.Linear(n, 1)
 
         self.seq = c1 + c2 + c3 + c4 + c5 + nn.Flatten + d1 + d2
+
+    def convert(self):
+        self.seq.convert()
 
     def forward(self, x):
         return self.seq(x)
