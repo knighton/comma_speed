@@ -151,7 +151,4 @@ class Model(SpeedPredictor):
         self.seq.convert()
 
     def forward(self, x):
-        speed = self.seq(x)
-        if not self.training:
-            speed.clamp_(min=0)
-        return speed
+        return self.seq(x)
