@@ -79,9 +79,9 @@ class SpeedPredictor(ptnn.Module):
         d = torch.load(filename)
         self.load_state_dict(d)
 
-    def fit(self, dataset, optimizer, num_epochs=10, batch_size=32,
-            batches_per_log=-1, chk_dir=None):
-        for epoch in range(num_epochs):
+    def fit(self, dataset, optimizer, begin_epoch=0, end_epoch=10,
+            batch_size=32, batches_per_log=-1, chk_dir=None):
+        for epoch in range(begin_epoch, end_epoch):
             train_loss, val_loss = self.fit_on_epoch(
                 dataset, optimizer, batch_size, batches_per_log)
             if chk_dir:

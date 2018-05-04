@@ -62,8 +62,9 @@ def run(flags):
     dataset = Dataset(train, val)
     model = Model(flags.dim)
     optimizer = SGD(model.parameters(), lr=0.001, momentum=0.9)
-    model.fit(dataset, optimizer, flags.num_epochs, flags.batch_size,
-              flags.batches_per_log, flags.out_model)
+    model.fit(dataset, optimizer, begin_epoch=0, end_epoch=flags.num_epochs,
+              batch_size=flags.batch_size,
+              batches_per_log=flags.batches_per_log, chk_dir=flags.out_model)
 
 
 if __name__ == '__main__':
