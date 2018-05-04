@@ -7,8 +7,10 @@ from tqdm import tqdm
 def parse_flags():
     a = ArgumentParser()
     a.add_argument('--in', type=str, required=True)
-    a.add_argument('--out_train', type=str, required=True)
-    a.add_argument('--out_val', type=str, required=True)
+    a.add_argument('--out_train_frames', type=str, required=True)
+    a.add_argument('--out_train_indices', type=str, required=True)
+    a.add_argument('--out_val_frames', type=str, required=True)
+    a.add_argument('--out_val_indices', type=str, required=True)
     a.add_argument('--frame_count', type=int, default=4)
     a.add_argument('--frame_skip', type=int, default=8)
     a.add_argument('--val_frac', type=float, default=0.2)
@@ -24,13 +26,16 @@ def extract_sample(vid, begin_index, sample_shape, frame_count, frame_skip):
     return x
 
 
-def process_split(vid, indices, out_filename, sample_shape, frame_count,
-                  frame_skip):
+def process_split(vid, indices, out_frames_fn, out_indices_fn, sample_shape,
+                  frame_count, frame_skip):
     x_shape = (len(indices),) + sample_shape
     x = np.zeros(x_shape, 'uint8')
     for i, index in enumerate(tqdm(indices)):
         x[i] = extract_sample(vid, index, sample_shape, frame_count, frame_skip)
-    x.tofile(out_filename)
+    x.tofile(out_frames_fn)
+
+    indices = np.array(indices, 'int32')
+    indices.tofile(out_indices_fn)
 
 
 def run(flags):
@@ -63,12 +68,13 @@ def run(flags):
     print('Sample shape: %s (%d bytes)' % (sample_shape, np.prod(sample_shape)))
 
     print('Processing training split...')
-    process_split(vid, train_indices, flags.out_train, sample_shape,
-                  flags.frame_count, flags.frame_skip)
+    process_split(vid, train_indices, flags.out_train_frames,
+                  flags.out_train_indices, sample_shape, flags.frame_count,
+                  flags.frame_skip)
 
     print('Processing validation split...')
-    process_split(vid, val_indices, flags.out_val, sample_shape,
-                  flags.frame_count, flags.frame_skip)
+    process_split(vid, val_indices, flags.out_val_frames, flags.out_val_indices,
+                  sample_shape, flags.frame_count, flags.frame_skip)
 
 
 if __name__ == '__main__':
