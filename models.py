@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 import torch
 from torch import nn as ptnn
 from torch.nn import functional as F
@@ -38,8 +39,8 @@ class SpeedPredictor(ptnn.Module):
 
     def fit_on_epoch(self, dataset, optimizer, batch_size):
         each_batch = dataset.each_batch(batch_size)
-        total = dataset.batches_per_epoch(batch_size)
-        each_batch = tqdm(each_batch, total=total)
+        #total = dataset.batches_per_epoch(batch_size)
+        #each_batch = tqdm(each_batch, total=total)
         train_losses = []
         val_losses = []
         for is_training, xx, yy in each_batch:
@@ -51,12 +52,14 @@ class SpeedPredictor(ptnn.Module):
                 self.train()
                 loss = self.train_on_batch(optimizer, clips, speeds)
                 train_losses.append(loss)
-                print('T %.4f' % loss)
+                sys.stdout.write('T %.4f\n' % loss)
+                sys.stdout.flush()
             else:
                 self.eval()
                 loss = self.val_on_batch(clips, speeds)
                 val_losses.append(loss)
-                print('V %.4f' % loss)
+                sys.stdout.write('V %.4f\n' % loss)
+                sys.stdout.flush()
         train_loss = np.mean(train_losses)
         val_loss = np.mean(val_losses)
         return train_loss, val_loss
@@ -69,10 +72,8 @@ class SpeedPredictor(ptnn.Module):
 
 
 class Model(SpeedPredictor):
-    def __init__(self):
+    def __init__(self, n=8):
         super().__init__()
-
-        n = 32
 
         # Conv blocks:
 

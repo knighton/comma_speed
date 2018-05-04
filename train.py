@@ -22,6 +22,7 @@ def parse_flags():
     a.add_argument('--frame_skip', type=int, default=8)
     a.add_argument('--num_epochs', type=int, default=1000)
     a.add_argument('--batch_size', type=int, default=32)
+    a.add_argument('--dim', type=int, default=8)
     return a.parse_args()
 
 
@@ -44,7 +45,7 @@ def run(flags):
     val = load_split(flags.in_val_frames, flags.in_val_indices, sample_shape,
                      speeds, speed_frame_offset)
     dataset = Dataset(train, val)
-    model = Model()
+    model = Model(flags.dim)
     optimizer = SGD(model.parameters(), lr=0.001, momentum=0.9)
     model.fit(dataset, optimizer, flags.num_epochs, flags.batch_size)
 
