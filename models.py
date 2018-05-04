@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import sys
 import torch
 from torch import nn as ptnn
@@ -58,16 +59,30 @@ class SpeedPredictor(ptnn.Module):
                 self.eval()
                 loss = self.val_on_batch(clips, speeds)
                 val_losses.append(loss)
-                sys.stdout.write('V %.4f\n' % loss)
+                sys.stdout.write('%sV %.4f\n' % (' ' * 20, loss))
                 sys.stdout.flush()
         train_loss = np.mean(train_losses)
         val_loss = np.mean(val_losses)
         return train_loss, val_loss
 
-    def fit(self, dataset, optimizer, num_epochs, batch_size):
+    def save(self, chk_dir, epoch, train_loss, val_loss):
+        out = '%04d_%07d_%07d.bin' % \
+            (epoch, int(train_loss * 1000), int(val_loss * 1000))
+        out = os.path.join(chk_dir, out)
+        if not os.path.exists(chk_dir):
+            os.makedirs(chk_dir)
+        torch.save(self.state_dict(), out)
+
+    def load(self, filename):
+        d = torch.load(filename)
+        self.load_state_dict(d)
+
+    def fit(self, dataset, optimizer, num_epochs, batch_size, chk_dir):
         for epoch in range(num_epochs):
             train_loss, val_loss = self.fit_on_epoch(
                 dataset, optimizer, batch_size)
+            if chk_dir:
+                self.save(chk_dir, epoch, train_loss, val_loss)
             print('epoch %d: %.4f %.4f' % (epoch, train_loss, val_loss))
 
 

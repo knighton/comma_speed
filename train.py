@@ -1,5 +1,7 @@
 from argparse import ArgumentParser
 import numpy as np
+import os
+import torch
 from torch.optim import SGD
 
 from common import Dataset, RamSplit
@@ -17,6 +19,7 @@ def parse_flags():
     a.add_argument('--in_val_indices', type=str,
                    default='data/train_128_val_indices.npy')
     a.add_argument('--in_speeds', type=str, default='data/train.txt')
+    a.add_argument('--out_model', type=str, required=True)
     a.add_argument('--sample_shape', type=str, default='4,128,128,3')
     a.add_argument('--frame_count', type=int, default=4)
     a.add_argument('--frame_skip', type=int, default=8)
@@ -47,7 +50,8 @@ def run(flags):
     dataset = Dataset(train, val)
     model = Model(flags.dim)
     optimizer = SGD(model.parameters(), lr=0.001, momentum=0.9)
-    model.fit(dataset, optimizer, flags.num_epochs, flags.batch_size)
+    model.fit(dataset, optimizer, flags.num_epochs, flags.batch_size,
+              flags.out_model)
 
 
 if __name__ == '__main__':
