@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import re
 import sys
 import torch
 from torch import nn as ptnn
@@ -76,11 +77,30 @@ class SpeedPredictor(ptnn.Module):
         torch.save(self.state_dict(), out)
 
     def load(self, filename):
-        d = torch.load(filename)
-        self.load_state_dict(d)
+        print('Loading model checkpoint: %s' % filename)
+        self.load_state_dict(torch.load(filename))
+
+    def maybe_load_last_epoch(self, chk_dir):
+        print('Loading model checkpoints dir: %s' % chk_dir)
+        pat = '[0-9]+_[0-9]+_[0-9]+.bin'
+        ff = os.listdir(chk_dir)
+        ff = filter(lambda f: re.match(pat, f), ff)
+        ff = list(map(lambda f: os.path.join(chk_dir, f), ff))
+        if not ff:
+            print('No checkpoints found.')
+            return None
+        ff.sort()
+        f = ff[-1]
+        self.load(f)
+        x = f.rindex(os.path.sep)
+        f = f[x + 1:]
+        x = f.index('_')
+        epoch = int(f[:x])
+        return epoch
 
     def fit(self, dataset, optimizer, begin_epoch=0, end_epoch=10,
             batch_size=32, batches_per_log=-1, chk_dir=None):
+        print('Fit from epoch %d -> %d' % (begin_epoch, end_epoch))
         for epoch in range(begin_epoch, end_epoch):
             train_loss, val_loss = self.fit_on_epoch(
                 dataset, optimizer, batch_size, batches_per_log)
