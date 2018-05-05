@@ -7,9 +7,9 @@ from tqdm import tqdm
 def parse_flags():
     a = ArgumentParser()
     a.add_argument('--in', type=str, required=True)
-    a.add_argument('--out_train_frames', type=str, required=True)
+    a.add_argument('--out_train_clips', type=str, required=True)
     a.add_argument('--out_train_indices', type=str, required=True)
-    a.add_argument('--out_val_frames', type=str, required=True)
+    a.add_argument('--out_val_clips', type=str, required=True)
     a.add_argument('--out_val_indices', type=str, required=True)
     a.add_argument('--frame_count', type=int, default=4)
     a.add_argument('--frame_skip', type=int, default=8)
@@ -68,12 +68,12 @@ def run(flags):
     print('Sample shape: %s (%d bytes)' % (sample_shape, np.prod(sample_shape)))
 
     print('Processing training split...')
-    process_split(vid, train_indices, flags.out_train_frames,
+    process_split(vid, train_indices, flags.out_train_clips,
                   flags.out_train_indices, sample_shape, flags.frame_count,
                   flags.frame_skip)
 
     print('Processing validation split...')
-    process_split(vid, val_indices, flags.out_val_frames, flags.out_val_indices,
+    process_split(vid, val_indices, flags.out_val_clips, flags.out_val_indices,
                   sample_shape, flags.frame_count, flags.frame_skip)
 
 
