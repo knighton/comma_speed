@@ -7,7 +7,7 @@ from tqdm import tqdm
 def parse_flags():
     a = ArgumentParser()
     a.add_argument('--in', type=str, default='data/test_128.mp4')
-    a.add_argument('--out', type=str, default='data/test_128.npy')
+    a.add_argument('--out', type=str, default='data/test_128_x.npy')
     a.add_argument('--frame_count', type=int, default=4)
     a.add_argument('--frame_skip', type=int, default=8)
     return a.parse_args()
