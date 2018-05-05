@@ -78,7 +78,7 @@ def run(flags):
 
     im = get_frame(vid, 0)
     clip_shape = (flags.clip_len,) + im.shape
-    print('Sample shape: %s (%d bytes)' % (clip_shape, np.prod(clip_shape)))
+    print('Clip shape: %s (%d bytes)' % (clip_shape, np.prod(clip_shape)))
 
     print('Processing training split...')
     process_split(vid, train_indices, flags.out_train_clips,
