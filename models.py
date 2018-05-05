@@ -38,7 +38,7 @@ class SpeedPredictor(ptnn.Module):
     def fit_on_epoch(self, dataset, optimizer, batch_size):
         each_batch = dataset.each_batch(batch_size)
         total = dataset.batches_per_epoch(batch_size)
-        each_batch = tqdm(each_batch, total=total)
+        each_batch = tqdm(each_batch, total=total, leave=False)
         train_losses = []
         val_losses = []
         for batch_index, (is_training, xx, yy) in enumerate(each_batch):
