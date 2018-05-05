@@ -12,23 +12,23 @@ def parse_flags():
     a = ArgumentParser()
 
     # Inputs.
-    a.add_argument('--in_train_frames', type=str,
-                   default='data/train_128_train_frames.npy')
+    a.add_argument('--in_train_clips', type=str,
+                   default='data/train_clips.npy')
     a.add_argument('--in_train_indices', type=str,
-                   default='data/train_128_train_indices.npy')
-    a.add_argument('--in_val_frames', type=str,
-                   default='data/train_128_val_frames.npy')
+                   default='data/train_indices.npy')
+    a.add_argument('--in_val_clips', type=str,
+                   default='data/val_clips.npy')
     a.add_argument('--in_val_indices', type=str,
-                   default='data/train_128_val_indices.npy')
+                   default='data/val_indices.npy')
     a.add_argument('--in_speeds', type=str, default='data/train.txt')
 
     # Outputs.
     a.add_argument('--out_model', type=str, required=True)
 
     # Data.
-    a.add_argument('--sample_shape', type=str, default='4,128,128,3')
-    a.add_argument('--frame_count', type=int, default=4)
-    a.add_argument('--frame_skip', type=int, default=8)
+    a.add_argument('--clip_len', type=int, default=6)
+    a.add_argument('--frame_height', type=int, default=128)
+    a.add_argument('--frame_width', type=int, default=128)
 
     # Model.
     a.add_argument('--dim', type=int, default=8)
@@ -38,36 +38,34 @@ def parse_flags():
     a.add_argument('--momentum', type=float, default=0.9)
     a.add_argument('--end_epoch', type=int, default=1000)
     a.add_argument('--batch_size', type=int, default=32)
-    a.add_argument('--batches_per_log', type=int, default=4)
 
     return a.parse_args()
 
 
-def load_split(frames_fn, indices_fn, sample_shape, speeds, speed_frame_offset):
-    x = np.fromfile(frames_fn, 'uint8')
-    x = x.reshape(((-1,) + sample_shape))
-    print('Training split: %s (%d bytes)' % (x.shape, np.prod(x.shape)))
+def load_split(clips_fn, indices_fn, clip_len, frame_shape, speeds):
+    x = np.fromfile(clips_fn, 'uint8')
+    x_shape = (-1, clip_len) + frame_shape
+    x = x.reshape(x_shape)
     indices = np.fromfile(indices_fn, 'int32')
     assert len(indices) == len(x)
-    y = speeds[indices + speed_frame_offset]
+    y = speeds[indices]
     return RamSplit(x, y)
 
 
 def run(flags):
-    sample_shape = tuple(map(int, flags.sample_shape.split(',')))
+    frame_shape = 3, flags.frame_height, flags.frame_width
     speeds = np.array(list(map(float, open(flags.in_speeds))), 'float32')
-    speed_frame_offset = flags.frame_count + flags.frame_skip
-    train = load_split(flags.in_train_frames, flags.in_train_indices,
-                       sample_shape, speeds, speed_frame_offset)
-    val = load_split(flags.in_val_frames, flags.in_val_indices, sample_shape,
-                     speeds, speed_frame_offset)
+    train = load_split(flags.in_train_clips, flags.in_train_indices,
+                       flags.clip_len, frame_shape, speeds)
+    val = load_split(flags.in_val_clips, flags.in_val_indices, flags.clip_len,
+                     frame_shape, speeds)
     dataset = Dataset(train, val)
     model = Model(flags.dim)
     optimizer = SGD(model.parameters(), lr=flags.lr, momentum=flags.momentum)
     begin_epoch = model.maybe_load_last_epoch(flags.out_model)
     model.fit(dataset, optimizer, begin_epoch=begin_epoch,
               end_epoch=flags.end_epoch, batch_size=flags.batch_size,
-              batches_per_log=flags.batches_per_log, chk_dir=flags.out_model)
+              chk_dir=flags.out_model)
 
 
 if __name__ == '__main__':
