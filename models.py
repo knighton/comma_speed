@@ -14,17 +14,13 @@ tqdm.monitor_interval = 0
 
 class SpeedPredictor(ptnn.Module):
     def transform_clips(self, x):
-        # Input shape: (N, T, H, W, C).
-        #     example: (32, 4, 128, 128, 3).
-        x = x.transpose([0, 4, 2, 3, 1])
         x = x.astype('float32')
         x /= 127.5
         x -= 1
-        return torch.from_numpy(x)
+        return torch.from_numpy(x).cuda()
 
-    def transform_speeds(self, x):
-        x = np.expand_dims(x, 1)
-        return torch.from_numpy(x)
+    def transform_speeds(self, y):
+        return torch.from_numpy(y).cuda()
 
     def train_on_batch(self, optimizer, clips, true_speeds):
         optimizer.zero_grad()
@@ -39,10 +35,10 @@ class SpeedPredictor(ptnn.Module):
         loss = F.mse_loss(pred_speeds, true_speeds)
         return np.asscalar(loss.detach().cpu().numpy())
 
-    def fit_on_epoch(self, dataset, optimizer, batch_size, batches_per_log=-1):
+    def fit_on_epoch(self, dataset, optimizer, batch_size):
         each_batch = dataset.each_batch(batch_size)
-        #total = dataset.batches_per_epoch(batch_size)
-        #each_batch = tqdm(each_batch, total=total)
+        total = dataset.batches_per_epoch(batch_size)
+        each_batch = tqdm(each_batch, total=total)
         train_losses = []
         val_losses = []
         for batch_index, (is_training, xx, yy) in enumerate(each_batch):
@@ -54,16 +50,10 @@ class SpeedPredictor(ptnn.Module):
                 self.train()
                 loss = self.train_on_batch(optimizer, clips, speeds)
                 train_losses.append(loss)
-                if batches_per_log != -1 and not batch_index % batches_per_log:
-                    sys.stdout.write('T %.4f\n' % loss)
-                    sys.stdout.flush()
             else:
                 self.eval()
                 loss = self.val_on_batch(clips, speeds)
                 val_losses.append(loss)
-                if batches_per_log != -1 and not batch_index % batches_per_log:
-                    sys.stdout.write('%sV %.4f\n' % (' ' * 20, loss))
-                    sys.stdout.flush()
         train_loss = np.mean(train_losses)
         val_loss = np.mean(val_losses)
         return train_loss, val_loss
@@ -108,11 +98,11 @@ class SpeedPredictor(ptnn.Module):
         return last_epoch + 1
 
     def fit(self, dataset, optimizer, begin_epoch=0, end_epoch=10,
-            batch_size=32, batches_per_log=-1, chk_dir=None):
+            batch_size=32, chk_dir=None):
         print('Fit from epoch %d -> %d' % (begin_epoch, end_epoch))
         for epoch in range(begin_epoch, end_epoch):
             train_loss, val_loss = self.fit_on_epoch(
-                dataset, optimizer, batch_size, batches_per_log)
+                dataset, optimizer, batch_size)
             if chk_dir:
                 self.save(chk_dir, epoch, train_loss, val_loss)
             print('epoch %d: %.4f %.4f' % (epoch, train_loss, val_loss))
@@ -143,7 +133,7 @@ class Model(SpeedPredictor):
 
         # Fully-connected blocks:
         d1 = nn.Linear(4 * 4 * n, n) + nn.BatchNorm1d(n) + nn.Dropout + nn.ReLU
-        d2 = nn.Linear(n, 1)
+        d2 = nn.Linear(n, 1) + nn.ReLU
 
         self.seq = c1 + c2 + c3 + c4 + c5 + nn.Flatten + d1 + d2
 
