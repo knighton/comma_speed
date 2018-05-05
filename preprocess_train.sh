@@ -1,5 +1,5 @@
 #/bin/sh
-python3 make_train_val_data.py \
+python3 preprocess_train.py \
     --in data/train_128.mp4 \
     --out_train_clips data/train_clips.npy \
     --out_train_indices data/train_indices.npy \
