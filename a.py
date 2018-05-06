@@ -190,7 +190,7 @@ class RelModel(ptnn.Module):
 
 
 num_runs = 5
-for dim in [8, 16, 32, 64]:
+for dim in [8, 16, 32, 64, 128]:
     print('dim: %d' % dim)
 
     model = ConvModel(dim)
@@ -199,10 +199,12 @@ for dim in [8, 16, 32, 64]:
         x = torch.rand(32, 3, 6, 128, 128)
         t0 = time()
         y = model(x)
+        assert y.shape == (32, 1)
         t = time() - t0
         tt.append(t)
-    print('conv: %s -> %s took %.3f ms.' %
-          (x.shape, y.shape, np.mean(tt) * 1000))
+    n = np.mean(tt) * 20
+    bar = '-' * int(n)
+    print('conv        %10.3f ms | %s' % (np.mean(tt) * 1000, bar))
 
     model = RelModel(dim)
     tt = []
@@ -210,7 +212,11 @@ for dim in [8, 16, 32, 64]:
         x = torch.rand(32, 3, 6, 128, 128)
         t0 = time()
         y = model(x)
+        assert y.shape == (32, 1)
         t = time() - t0
         tt.append(t)
-    print('spatial rel: %s -> %s took %.3f ms.' %
-          (x.shape, y.shape, np.mean(tt) * 1000))
+    n = np.mean(tt) * 20
+    bar = '-' * int(n)
+    print('spatial rel %10.3f ms | %s' % (np.mean(tt) * 1000, bar))
+
+    print()
