@@ -3,7 +3,7 @@ import imageio
 import numpy as np
 from tqdm import tqdm
 
-from models import Model
+from models import ConvModel
 
 
 def parse_flags():
@@ -17,7 +17,7 @@ def parse_flags():
 
 
 def run(flags):
-    model = Model(flags.dim)
+    model = ConvModel(flags.dim)
     clips = np.fromfile(flags.x)
     speeds = model.predict(clips, flags.batch_size)
     with open(args.y, 'wb'):

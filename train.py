@@ -5,7 +5,7 @@ import torch
 from torch.optim import SGD
 
 from common.dataset import Dataset, RamSplit
-from common.models import Model
+from common.model.conv import ConvModel
 
 
 def parse_flags():
@@ -62,7 +62,7 @@ def run(flags):
     val = load_split(flags.in_val_clips, flags.in_val_indices, flags.clip_len,
                      frame_shape, speeds)
     dataset = Dataset(train, val)
-    model = Model(flags.dim).cuda()
+    model = ConvModel(flags.dim).cuda()
     optimizer = SGD(model.parameters(), lr=flags.lr, momentum=flags.momentum)
     begin_epoch = model.maybe_load_last_epoch(flags.out_model)
     model.fit(dataset, optimizer, begin_epoch=begin_epoch,
