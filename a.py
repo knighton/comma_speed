@@ -41,8 +41,42 @@ def relate(grid, context, relater, global_pool=None):
     print('relatee', relatee.shape)
 
     # Relate each pair of vectors (with optional context).
-    related = relater(relatee)
-    print('related', related.shape)
+    x = relater(relatee)
+    print('related', x.shape)
+
+    if global_pool is None:
+        # The idea: for each cell (depth x height x width), sum all the vectors
+        # that involve it, preserving the input's spatial shape, allowing us to
+        # plug this in as a layer and continue convolving or whatnot afterward.
+
+        # Break it down into the actual dimensions.
+        true_shape = (batch_size,) + spatial_shape + spatial_shape + (-1,)
+        x = x.view(*true_shape)
+
+        # Permute the depth, height, and width dimensions next to each other.
+        permute_axes = [0, len(true_shape) - 1]
+        for i in range(len(spatial_shape)):
+            permute_axes.append(i + 1)  # Left side.
+            permute_axes.append(i + 1 + len(spatial_shape))  # Right side.
+        x = x.permute(*permute_axes)
+
+        # Reduce over depth, height, and width.
+        for i in reversed(range(len(spatial_shape))):
+            x = x.sum((i + 1) * 2)
+    elif global_pool == 'avg':
+        # Reduce the output vectors to a single channel-wise vector.
+        shape = batch_size, num_cells * num_cells, -1
+        x = x.reshape(*shape)
+        x = x.mean(1)
+    elif global_pool == 'max':
+        # Reduce the output vectors to a single channel-wise vector.
+        shape = batch_size, num_cells * num_cells, -1
+        x = x.reshape(*shape)
+        x = x.max(1)[0]
+    else:
+        assert False
+    print('global pooled', x.shape)
+    return x
 
 
 class Relater(nn.Module):
@@ -50,16 +84,19 @@ class Relater(nn.Module):
         return x
 
 
-grid = torch.rand(32, 64, 4, 4)
-context = None
-relater = Relater()
-global_pool = None
-relate(grid, context, relater, global_pool)
+for global_pool in [None, 'avg', 'max']:
+    print('=' * 80)
+    print(global_pool)
+    print()
 
-print('-' * 80)
+    grid = torch.rand(32, 64, 4, 4)
+    context = None
+    relater = Relater()
+    relate(grid, context, relater, global_pool)
 
-grid = torch.rand(32, 64, 4, 4)
-context = torch.rand(32, 27)
-relater = Relater()
-global_pool = None
-relate(grid, context, relater, global_pool)
+    print('-' * 80)
+
+    grid = torch.rand(32, 64, 4, 4)
+    context = torch.rand(32, 27)
+    relater = Relater()
+    relate(grid, context, relater, global_pool)
