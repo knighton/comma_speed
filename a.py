@@ -115,6 +115,9 @@ class RelateWith(ptnn.Module):
             in_channels * 2 + context_dim, out_channels)
         self.global_pool = global_pool
 
+    def forward(self, x, context):
+        return api_relate(x, context, self.relater, self.global_pool)
+
 
 class ConvModel(ptnn.Module):
     def __init__(self, n=16):
