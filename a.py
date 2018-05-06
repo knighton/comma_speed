@@ -4,7 +4,7 @@ from torch import nn as ptnn
 from torchplus import nn
 
 
-def relate(grid, context, relater, global_pool=None):
+def api_relate(grid, context, relater, global_pool=None):
     # Get shapes.
     batch_size, num_grid_channels = grid.shape[:2]
     spatial_shape = grid.shape[2:]
@@ -20,10 +20,6 @@ def relate(grid, context, relater, global_pool=None):
     right = cells.unsqueeze(2)
     right = right.repeat(1, 1, num_cells, 1)
 
-    print('cells', cells.shape)
-    print('left', left.shape)
-    print('right', right.shape)
-
     # Create grid x grid, concatenating context to each if given.
     if context is None:
         grid_x_grid = torch.cat([left, right], 0)
@@ -32,18 +28,14 @@ def relate(grid, context, relater, global_pool=None):
         context = context.repeat(1, num_cells, 1)
         context = context.unsqueeze(2)
         context = context.repeat(1, 1, num_cells, 1)
-        print('context', context.shape)
         grid_x_grid = torch.cat([left, right, context], 3)
 
-    print('grid x grid', grid_x_grid.shape)
-
     # Reshape for feeding cell pairs to relater.
-    relatee = grid_x_grid.view(batch_size * num_cells * num_cells, -1)
-    print('relatee', relatee.shape)
+    x = grid_x_grid.view(batch_size * num_cells * num_cells, -1)
 
     # Relate each pair of vectors (with optional context).
-    x = relater(relatee)
-    print('related', x.shape)
+    if relater:
+        x = relater(x)
 
     if global_pool is None:
         # The idea: for each cell (depth x height x width), sum all the vectors
@@ -76,11 +68,10 @@ def relate(grid, context, relater, global_pool=None):
         x = x.max(1)[0]
     else:
         assert False
-    print('global pooled', x.shape)
     return x
 
 
-class Relater(ptnn.Module):
+class DefaultRelater(ptnn.Module):
     def __init__(self, in_dim, out_dim):
         super().__init__()
 
@@ -91,10 +82,30 @@ class Relater(ptnn.Module):
         mid_dim = (in_dim + out_dim) // 2
         one = block(in_dim, mid_dim)
         two = block(mid_dim, out_dim)
+
         self.seq = one + two
 
     def forward(self, x):
         return self.seq(x)
+
+
+class Relate(ptnn.Module):
+    def __init__(self, in_channels, out_channels, global_pool=None):
+        assert global_pool in {None, 'avg', 'max'}
+        self.relater = DefaultRelater(in_channels * 2, out_channels)
+        self.global_pool = global_pool
+
+    def forward(self, x):
+        return api_relate(x, None, self.relater, self.global_pool)
+
+
+class RelateWith(ptnn.Module):
+    def __init__(self, in_channels, out_channels, context_dim,
+                 global_pool=None):
+        assert global_pool in {None, 'avg', 'max'}
+        self.relater = DefaultRelater(
+            in_channels * 2 + context_dim, out_channels)
+        self.global_pool = global_pool
 
 
 for global_pool in [None, 'avg', 'max']:
@@ -104,12 +115,14 @@ for global_pool in [None, 'avg', 'max']:
 
     grid = torch.rand(32, 64, 4, 4)
     context = None
-    relater = Relater(64 * 2, 16)
-    relate(grid, context, relater, global_pool)
+    relater = DefaultRelater(64 * 2, 16)
+    y = api_relate(grid, context, relater, global_pool)
+    print(y.shape)
 
     print('-' * 80)
 
     grid = torch.rand(32, 64, 4, 4)
     context = torch.rand(32, 27)
-    relater = Relater(64 * 2 + 27, 16)
-    relate(grid, context, relater, global_pool)
+    relater = DefaultRelater(64 * 2 + 27, 16)
+    y = api_relate(grid, context, relater, global_pool)
+    print(y.shape)
