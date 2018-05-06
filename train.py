@@ -4,8 +4,8 @@ import os
 import torch
 from torch.optim import SGD
 
-from common import Dataset, RamSplit
-from models import Model
+from common.dataset import Dataset, RamSplit
+from common.models import Model
 
 
 def parse_flags():
