@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from time import time
 from torch import nn as ptnn
 from torchplus import nn
 from torchplus.nn.internal import Keyword
@@ -75,6 +76,8 @@ def api_relate(grid, context, relater, global_pool=None):
 class DefaultRelater(ptnn.Module):
     def __init__(self, in_dim, out_dim):
         super().__init__()
+        self.in_dim = in_dim
+        self.out_dim = out_dim
 
         block = lambda in_dim, out_dim: \
             nn.Linear(in_dim, out_dim) + nn.BatchNorm1d(out_dim) + nn.ReLU + \
@@ -114,7 +117,7 @@ class RelateWith(ptnn.Module):
 
 
 class ConvModel(ptnn.Module):
-    def __init__(self, n=8):
+    def __init__(self, n=16):
         super().__init__()
 
         # Conv blocks:
@@ -147,7 +150,7 @@ class ConvModel(ptnn.Module):
 
 
 class RelModel(ptnn.Module):
-    def __init__(self, n=8):
+    def __init__(self, n=16):
         super().__init__()
 
         # Conv blocks:
@@ -171,8 +174,8 @@ class RelModel(ptnn.Module):
         conv = c1 + c2 + c3 + c4 + c5
 
         # Relational blocks:
-        r1 = Relate(8, 8)
-        r2 = Relate(8, 8)
+        r1 = Relate(n, n)
+        r2 = Relate(n, n)
         relational = r1 + r2
 
         # Fully-connected blocks:
@@ -186,19 +189,28 @@ class RelModel(ptnn.Module):
         return self.seq(x)
 
 
-for global_pool in [None, 'avg', 'max']:
-    print('=' * 80)
-    print(global_pool)
-    print()
+num_runs = 5
+for dim in [8, 16, 32, 64]:
+    print('dim: %d' % dim)
 
-    model = ConvModel()
+    model = ConvModel(dim)
+    tt = []
+    for i in range(num_runs):
+        x = torch.rand(32, 3, 6, 128, 128)
+        t0 = time()
+        y = model(x)
+        t = time() - t0
+        tt.append(t)
+    print('conv: %s -> %s took %.3f ms.' %
+          (x.shape, y.shape, np.mean(tt) * 1000))
 
-    x = torch.rand(32, 3, 6, 128, 128)
-    y = model(x)
-    print(x.shape, '->', y.shape)
-
-    model = RelModel()
-
-    x = torch.rand(32, 3, 6, 128, 128)
-    y = model(x)
-    print(x.shape, '->', y.shape)
+    model = RelModel(dim)
+    tt = []
+    for i in range(num_runs):
+        x = torch.rand(32, 3, 6, 128, 128)
+        t0 = time()
+        y = model(x)
+        t = time() - t0
+        tt.append(t)
+    print('spatial rel: %s -> %s took %.3f ms.' %
+          (x.shape, y.shape, np.mean(tt) * 1000))
