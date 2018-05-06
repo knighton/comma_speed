@@ -1,6 +1,7 @@
 import numpy as np
 import torch
-from torch import nn
+from torch import nn as ptnn
+from torchplus import nn
 
 
 def relate(grid, context, relater, global_pool=None):
@@ -79,9 +80,21 @@ def relate(grid, context, relater, global_pool=None):
     return x
 
 
-class Relater(nn.Module):
+class Relater(ptnn.Module):
+    def __init__(self, in_dim, out_dim):
+        super().__init__()
+
+        block = lambda in_dim, out_dim: \
+            nn.Linear(in_dim, out_dim) + nn.BatchNorm1d(out_dim) + nn.ReLU + \
+            nn.Dropout
+
+        mid_dim = (in_dim + out_dim) // 2
+        one = block(in_dim, mid_dim)
+        two = block(mid_dim, out_dim)
+        self.seq = one + two
+
     def forward(self, x):
-        return x
+        return self.seq(x)
 
 
 for global_pool in [None, 'avg', 'max']:
@@ -91,12 +104,12 @@ for global_pool in [None, 'avg', 'max']:
 
     grid = torch.rand(32, 64, 4, 4)
     context = None
-    relater = Relater()
+    relater = Relater(64 * 2, 16)
     relate(grid, context, relater, global_pool)
 
     print('-' * 80)
 
     grid = torch.rand(32, 64, 4, 4)
     context = torch.rand(32, 27)
-    relater = Relater()
+    relater = Relater(64 * 2 + 27, 16)
     relate(grid, context, relater, global_pool)
