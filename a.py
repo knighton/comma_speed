@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from torch import nn as ptnn
 from torchplus import nn
+from torchplus.nn.internal import Keyword
 
 
 def api_relate(grid, context, relater, global_pool=None):
@@ -91,12 +92,16 @@ class DefaultRelater(ptnn.Module):
 
 class Relate(ptnn.Module):
     def __init__(self, in_channels, out_channels, global_pool=None):
+        super().__init__()
         assert global_pool in {None, 'avg', 'max'}
         self.relater = DefaultRelater(in_channels * 2, out_channels)
         self.global_pool = global_pool
 
     def forward(self, x):
         return api_relate(x, None, self.relater, self.global_pool)
+
+
+Relate = Keyword(Relate)
 
 
 class RelateWith(ptnn.Module):
@@ -141,6 +146,46 @@ class ConvModel(ptnn.Module):
         return self.seq(x)
 
 
+class RelModel(ptnn.Module):
+    def __init__(self, n=8):
+        super().__init__()
+
+        # Conv blocks:
+
+        # 128 -> 64.
+        c1 = nn.Conv3d(3, n, 5, 2, 2) + nn.BatchNorm3d(n) + nn.ReLU
+
+        # 64 -> 32.
+        c2 = nn.Conv3d(n, n, 5, 2, 2) + nn.BatchNorm3d(n) + nn.ReLU
+
+        # 32 -> 16.
+        c3 = nn.Conv3d(n, n, 5, 2, 2) + nn.BatchNorm3d(n) + nn.ReLU
+
+        # 16 -> 8.
+        c4 = nn.Conv3d(n, n, 5, 2, 2) + nn.BatchNorm3d(n) + nn.ReLU + \
+            nn.Dropout2d
+
+        # 8 -> 4.
+        c5 = nn.Conv3d(n, n, 5, 2, 2) + nn.BatchNorm3d(n) + nn.ReLU + \
+            nn.Dropout2d
+        conv = c1 + c2 + c3 + c4 + c5
+
+        # Relational blocks:
+        r1 = Relate(8, 8)
+        r2 = Relate(8, 8)
+        relational = r1 + r2
+
+        # Fully-connected blocks:
+        d1 = nn.Linear(4 * 4 * n, n) + nn.BatchNorm1d(n) + nn.Dropout + nn.ReLU
+        d2 = nn.Linear(n, 1) + nn.ReLU
+        dense = nn.Flatten.instance() + d1 + d2
+
+        self.seq = conv + relational + dense
+
+    def forward(self, x):
+        return self.seq(x)
+
+
 for global_pool in [None, 'avg', 'max']:
     print('=' * 80)
     print(global_pool)
@@ -152,18 +197,8 @@ for global_pool in [None, 'avg', 'max']:
     y = model(x)
     print(x.shape, '->', y.shape)
 
-    """
-    grid = torch.rand(32, 64, 4, 4)
-    context = None
-    relater = DefaultRelater(64 * 2, 16)
-    y = api_relate(grid, context, relater, global_pool)
-    print(y.shape)
+    model = RelModel()
 
-    print('-' * 80)
-
-    grid = torch.rand(32, 64, 4, 4)
-    context = torch.rand(32, 27)
-    relater = DefaultRelater(64 * 2 + 27, 16)
-    y = api_relate(grid, context, relater, global_pool)
-    print(y.shape)
-    """
+    x = torch.rand(32, 3, 6, 128, 128)
+    y = model(x)
+    print(x.shape, '->', y.shape)
